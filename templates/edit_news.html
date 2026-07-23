@@ -1,0 +1,49 @@
+{% extends "app.html" %}
+{% block content %}
+<div class="container mt-4" style="max-width: 600px;">
+  <h2>✏️ Edit News</h2>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-info">
+        {% for message in messages %}{{ message }}{% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form action="/edit_news/{{ news['id'] }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label><strong>News Title</strong></label>
+      <input type="text" name="title" class="form-control"
+             value="{{ news['title'] }}" required>
+    </div>
+
+    <div class="form-group">
+      <label><strong>News Content</strong></label>
+      <textarea name="content" class="form-control"
+                rows="5" required>{{ news['content'] }}</textarea>
+    </div>
+
+    <!-- Current media dikhao -->
+    {% if news['media_filename'] %}
+      <div class="form-group">
+        <label><strong>Current Media:</strong></label><br>
+        {% if news['media_type'] == 'image' %}
+          <img src="/static/uploads/{{ news['media_filename'] }}"
+               class="img-fluid rounded" style="max-height:150px;">
+        {% elif news['media_type'] == 'video' %}
+          <video controls style="max-height:150px; width:100%;" class="rounded">
+            <source src="/static/uploads/{{ news['media_filename'] }}"
+                    type="video/mp4">
+          </video>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-dark">Update News</button>
+    <a href="/dashboard" class="btn btn-secondary ml-2">Cancel</a>
+  </form>
+</div>
+{% endblock %}

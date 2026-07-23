@@ -1,0 +1,82 @@
+{% extends "app.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>📰 Breaking News</h2>
+  <p>Welcome, <strong>{{ username }}</strong></p>
+  <a href="/logout" class="btn btn-dark mb-3">Logout</a>
+
+  {% for item in news %}
+    <div class="card mb-3">
+      <div class="card-body">
+
+        <!-- Title aur Media side by side -->
+        <div class="d-flex align-items-start">
+
+          <!-- Left side — Title aur Content -->
+          <div class="flex-grow-1 mr-3">
+            <h5 class="card-title">{{ item['title'] }}</h5>
+            <p class="card-text">{{ item['content'] }}</p>
+          </div>
+
+          <!-- Right side — Chhoti Image ya Video -->
+          {% if item['media_filename'] %}
+            <div style="min-width: 150px; max-width: 200px;">
+              {% if item['media_type'] == 'image' %}
+                <img src="/static/uploads/{{ item['media_filename'] }}"
+                     class="rounded"
+                     style="width: 180px; height: 120px; object-fit: cover;">
+
+              {% elif item['media_type'] == 'video' %}
+                <video controls
+                       style="width: 180px; height: 120px; object-fit: cover;"
+                       class="rounded">
+                  <source src="/static/uploads/{{ item['media_filename'] }}">
+                </video>
+              {% endif %}
+            </div>
+          {% endif %}
+
+        </div>
+
+        <!-- Time aur Countdown neeche -->
+        <hr class="mt-2 mb-1">
+        <small class="text-muted">🕒 Posted: {{ item['created_at'] }}</small><br>
+        {% if item['expires_at'] %}
+          <small class="text-danger">
+            ⏳ Expires in:
+            <span class="countdown" data-expires="{{ item['expires_at'] }}">
+              Calculating...
+            </span>
+          </small>
+        {% endif %}
+
+      </div>
+    </div>
+  {% endfor %}
+
+  {% if not news %}
+    <p class="text-muted text-center">NO NEWS AVAILABLE.</p>
+  {% endif %}
+
+</div>
+
+<script>
+  function updateCountdowns() {
+    document.querySelectorAll('.countdown').forEach(function(el) {
+      const diff = new Date(el.getAttribute('data-expires')) - new Date();
+      if (diff <= 0) {
+        el.innerHTML = '<span class="text-danger">Expired — Refreshing...</span>';
+        setTimeout(() => location.reload(), 2000);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      el.innerHTML = '<strong>' + h + 'h ' + m + 'm ' + s + 's</strong>';
+    });
+  }
+  updateCountdowns();
+  setInterval(updateCountdowns, 1000);
+</script>
+
+{% endblock %}

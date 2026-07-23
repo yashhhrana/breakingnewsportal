@@ -1,0 +1,151 @@
+{% extends "app.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>🛠️ Admin Dashboard</h2>
+  <p>Welcome, <strong>{{ username }}</strong></p>
+  <a href="/logout" class="btn btn-dark mb-3">Logout</a>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-info">
+        {% for message in messages %}{{ message }}{% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <h4>Add News</h4>
+
+  <!-- enctype ZAROORI HAI — iske bina file upload nahi hogi -->
+  <form action="/add_news" method="POST" enctype="multipart/form-data" class="mb-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Title -->
+    <div class="form-group">
+      <label><strong>News Title</strong></label>
+      <input type="text" name="title" class="form-control"
+             placeholder="Write news title..." required>
+    </div>
+
+    <!-- Content -->
+    <div class="form-group">
+      <label><strong>News Content</strong></label>
+      <textarea name="content" class="form-control" rows="4"
+                placeholder="Write content here..." required></textarea>
+    </div>
+
+    <!-- PHOTO / VIDEO UPLOAD -->
+    <div class="form-group">
+      <label><strong>Photo/Video</strong></label>
+      <div class="custom-file">
+        <input type="file" 
+               name="media" 
+               class="custom-file-input" 
+               id="mediaFile"
+               accept="image/png, image/jpg, image/jpeg, image/gif, video/mp4, video/mov, video/avi">
+        <label class="custom-file-label" for="mediaFile">
+          Choose photo or video...
+        </label>
+      </div>
+      <small class="text-muted mt-1 d-block">
+        ✅ Allowed: JPG, PNG, GIF, MP4, MOV, AVI &nbsp;|&nbsp; 📦 Max size: 50MB
+      </small>
+    </div>
+
+    <!-- File Preview — select karne ke baad dikhega -->
+    <div id="preview-container" class="mb-3" style="display:none;">
+      <label><strong>Preview:</strong></label><br>
+      <img id="image-preview" src="#" alt="Image Preview"
+           style="max-height: 200px; display:none;" class="img-fluid rounded">
+      <video id="video-preview" controls
+             style="max-height: 200px; display:none;" class="w-100 rounded">
+        <source id="video-source" src="#">
+      </video>
+    </div>
+
+    <!-- Expiry -->
+    <div class="form-group">
+      <label><strong> Time to Expire</strong></label>
+      <select name="expires_in" class="form-control">
+        <option value="1">1 HOUR</option>
+        <option value="6">6 HOURS</option>
+        <option value="12">12 HOURS</option>
+        <option value="24" selected>24 HOURS (1 DAY)</option>
+        <option value="48">48 HOURS (2 DAYS)</option>
+        <option value="168">1 WEEK</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-success btn-block">
+      📢 Add News
+    </button>
+  </form>
+
+  <hr>
+
+  <h4>All News</h4>
+  {% for item in news %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>{{ item['title'] }}</h5>
+        <p>{{ item['content'] }}</p>
+
+        <!-- Media Preview in Dashboard -->
+        {% if item['media_filename'] %}
+          {% if item['media_type'] == 'image' %}
+            <img src="/static/uploads/{{ item['media_filename'] }}"
+                 class="img-fluid rounded mb-2"
+                 style="max-height: 200px;">
+          {% elif item['media_type'] == 'video' %}
+            <video controls class="mb-2" style="max-height: 200px; width: 100%;">
+              <source src="/static/uploads/{{ item['media_filename'] }}">
+            </video>
+          {% endif %}
+        {% endif %}
+
+        <br>
+        <small class="text-muted">📅 Added: {{ item['created_at'] }}</small><br>
+        <small class="text-danger">
+          ⏳ Expires: {{ item['expires_at'] if item['expires_at'] else 'No expiry set' }}
+        </small>
+        <br><br>
+        <a href="/edit_news/{{ item['id'] }}" class="btn btn-sm btn-primary">✏️ Edit</a>
+        <a href="/delete_news/{{ item['id'] }}" class="btn btn-sm btn-danger">🗑️ Delete</a>
+      </div>
+    </div>
+  {% endfor %}
+
+</div>
+
+<!-- File select hone par naam aur preview dikhao -->
+<script>
+  document.getElementById('mediaFile').addEventListener('change', function() {
+    const file = this.files[0];
+    const label = document.querySelector('.custom-file-label');
+    const previewContainer = document.getElementById('preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const videoPreview = document.getElementById('video-preview');
+    const videoSource = document.getElementById('video-source');
+
+    if (!file) return;
+
+    // File ka naam label mein dikhao
+    label.textContent = file.name;
+
+    const url = URL.createObjectURL(file);
+    previewContainer.style.display = 'block';
+
+    if (file.type.startsWith('image/')) {
+      imagePreview.src = url;
+      imagePreview.style.display = 'block';
+      videoPreview.style.display = 'none';
+
+    } else if (file.type.startsWith('video/')) {
+      videoSource.src = url;
+      videoPreview.load();
+      videoPreview.style.display = 'block';
+      imagePreview.style.display = 'none';
+    }
+  });
+</script>
+
+{% endblock %}

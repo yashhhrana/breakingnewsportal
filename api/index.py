@@ -6,11 +6,11 @@ root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from app import app as flask_app
+from app import app
 
-class VercelWSGIAdapter:
-    def __init__(self, app):
-        self.app = app
+class PrefixMiddleware:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
         path = environ.get('PATH_INFO', '')
@@ -18,7 +18,7 @@ class VercelWSGIAdapter:
             environ['PATH_INFO'] = path[10:] or '/'
         elif path.startswith('/api'):
             environ['PATH_INFO'] = path[4:] or '/'
-        return self.app(environ, start_response)
+        return self.wsgi_app(environ, start_response)
 
-# Vercel entrypoint instance
-app = VercelWSGIAdapter(flask_app)
+# Attach middleware to Flask wsgi_app while keeping `app` as Flask object
+app.wsgi_app = PrefixMiddleware(app.wsgi_app)

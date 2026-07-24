@@ -13,10 +13,16 @@ import uuid
 # Load environment variables from .env file
 load_dotenv()
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-this-secret')
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, 'templates'),
+    static_folder=os.path.join(BASE_DIR, 'static')
+)
+
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', '05f749a32899eed231112a829fe9b96476033e7c36ccafa783585c4918581bef')
+app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 # Supabase Client setup
@@ -32,6 +38,8 @@ if SUPABASE_URL and SUPABASE_KEY and 'your-supabase-project-id' not in SUPABASE_
 
 # Allowed media upload types
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'webm'}
+
+csrf = CSRFProtect(app)
 
 try:
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -97,7 +105,7 @@ def register():
         ).decode('utf-8')
 
         if not supabase:
-            flash("Database not configured. Please set SUPABASE_URL and SUPABASE_KEY in .env.")
+            flash("Database not configured. Please set SUPABASE_URL and SUPABASE_KEY in Vercel Environment Variables.")
             return redirect(url_for('register'))
 
         try:
@@ -135,7 +143,7 @@ def login():
         password = form.password.data
 
         if not supabase:
-            flash("Database not configured. Please set SUPABASE_URL and SUPABASE_KEY in .env.")
+            flash("Database not configured. Please set SUPABASE_URL and SUPABASE_KEY in Vercel Environment Variables.")
             return redirect(url_for('login'))
 
         try:
@@ -203,7 +211,6 @@ def add_news():
         uploaded_to_supabase = False
         if supabase:
             try:
-                # Attempt upload to Supabase Storage bucket 'news-media'
                 content_type = file.content_type or ('image/' + ext if ext in {'png', 'jpg', 'jpeg', 'gif'} else 'video/' + ext)
                 supabase.storage.from_('news-media').upload(
                     path=unique_name,
@@ -216,10 +223,14 @@ def add_news():
                 print("Supabase Storage upload warning (falling back to local):", st_err)
 
         if not uploaded_to_supabase:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-            with open(file_path, 'wb') as f:
-                f.write(file_bytes)
-            media_filename = unique_name
+            try:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+                with open(file_path, 'wb') as f:
+                    f.write(file_bytes)
+                media_filename = unique_name
+            except Exception as save_err:
+                print("Local file save error:", save_err)
+                media_filename = unique_name
 
         if ext in {'png', 'jpg', 'jpeg', 'gif'}:
             media_type = 'image'

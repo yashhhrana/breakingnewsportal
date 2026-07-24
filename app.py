@@ -33,9 +33,10 @@ if SUPABASE_URL and SUPABASE_KEY and 'your-supabase-project-id' not in SUPABASE_
 # Allowed media upload types
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'webm'}
 
-csrf = CSRFProtect(app)
-
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except Exception as fs_err:
+    print("Serverless filesystem notice:", fs_err)
 
 
 def allowed_file(filename):

@@ -8,5 +8,5 @@ if root_dir not in sys.path:
 
 from app import app
 
-# Explicitly expose app for Vercel WSGI Serverless Runtime
+# Expose WSGI handler for Vercel
 app = app

@@ -22,7 +22,7 @@
           {% if item['media_filename'] %}
             <div style="min-width: 150px; max-width: 200px;">
               {% if item['media_type'] == 'image' %}
-                <img src="/static/uploads/{{ item['media_filename'] }}"
+                <img src="{{ item['media_filename'] | media_url }}"
                      class="rounded"
                      style="width: 180px; height: 120px; object-fit: cover;">
 
@@ -30,7 +30,7 @@
                 <video controls
                        style="width: 180px; height: 120px; object-fit: cover;"
                        class="rounded">
-                  <source src="/static/uploads/{{ item['media_filename'] }}">
+                  <source src="{{ item['media_filename'] | media_url }}">
                 </video>
               {% endif %}
             </div>

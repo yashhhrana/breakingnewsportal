@@ -2,28 +2,38 @@ from flask import Flask, render_template, redirect, url_for, flash, session, req
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
-from flask_mysqldb import MySQL
 from werkzeug.utils import secure_filename
+from datetime import datetime, timedelta, timezone
+from supabase import create_client, Client
+from dotenv import load_dotenv
 import bcrypt
 import os
 import uuid
 
+# Load environment variables from .env file
+load_dotenv()
+
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = 'change-this-secret'
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'jiit'
-app.config['MYSQL_DB'] = 'news_app'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-this-secret')
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# Image aur Video dono allowed
+# Supabase Client setup
+SUPABASE_URL = os.getenv('SUPABASE_URL', '').strip()
+SUPABASE_KEY = os.getenv('SUPABASE_KEY', '').strip()
+
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY and 'your-supabase-project-id' not in SUPABASE_URL:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print("Supabase connection warning:", e)
+
+# Allowed media upload types
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'webm'}
 
 csrf = CSRFProtect(app)
-mysql = MySQL(app)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -31,6 +41,15 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.template_filter('media_url')
+def media_url_filter(filename):
+    if not filename:
+        return ''
+    if filename.startswith('http://') or filename.startswith('https://'):
+        return filename
+    return f'/static/uploads/{filename}'
 
 
 # ─────────────────── FORMS ───────────────────
@@ -76,27 +95,31 @@ def register():
             bcrypt.gensalt()
         ).decode('utf-8')
 
-        cur = mysql.connection.cursor()
-        cur.execute(
-            "SELECT id FROM users WHERE username = %s OR email = %s",
-            (username, email)
-        )
-        existing = cur.fetchone()
-
-        if existing:
-            cur.close()
-            flash("Username or Email already exists.")
+        if not supabase:
+            flash("Database not configured. Please set SUPABASE_URL and SUPABASE_KEY in .env.")
             return redirect(url_for('register'))
 
-        cur.execute(
-            "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
-            (username, email, password_hash)
-        )
-        mysql.connection.commit()
-        cur.close()
+        try:
+            # Check existing username or email
+            res = supabase.table('users').select('id').or_(f"username.eq.{username},email.eq.{email}").execute()
+            if res.data and len(res.data) > 0:
+                flash("Username or Email already exists.")
+                return redirect(url_for('register'))
 
-        flash("Registration successful! Please login.")
-        return redirect(url_for('login'))
+            # Insert user
+            supabase.table('users').insert({
+                'username': username,
+                'email': email,
+                'password': password_hash,
+                'role': 'client'
+            }).execute()
+
+            flash("Registration successful! Please login.")
+            return redirect(url_for('login'))
+        except Exception as e:
+            print("Supabase Register Error:", e)
+            flash(f"Error during registration: {e}")
+            return redirect(url_for('register'))
 
     return render_template('register.html', form=form)
 
@@ -110,25 +133,29 @@ def login():
         email = form.email.data.strip().lower()
         password = form.password.data
 
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        cur.close()
+        if not supabase:
+            flash("Database not configured. Please set SUPABASE_URL and SUPABASE_KEY in .env.")
+            return redirect(url_for('login'))
 
-        if user and bcrypt.checkpw(
-            password.encode('utf-8'),
-            user['password'].encode('utf-8')
-        ):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
+        try:
+            res = supabase.table('users').select('*').eq('email', email).execute()
+            user = res.data[0] if (res.data and len(res.data) > 0) else None
 
-            if user['role'] == 'admin':
-                return redirect(url_for('dashboard'))
-            return redirect(url_for('client_news'))
+            if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['role'] = user['role']
 
-        flash("Invalid Email or Password")
-        return redirect(url_for('login'))
+                if user['role'] == 'admin':
+                    return redirect(url_for('dashboard'))
+                return redirect(url_for('client_news'))
+
+            flash("Invalid Email or Password")
+            return redirect(url_for('login'))
+        except Exception as e:
+            print("Supabase Login Error:", e)
+            flash(f"Login error: {e}")
+            return redirect(url_for('login'))
 
     return render_template('login.html', form=form)
 
@@ -140,10 +167,14 @@ def dashboard():
         flash("Access denied.")
         return redirect(url_for('login'))
 
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM news ORDER BY created_at DESC")
-    news_list = cur.fetchall()
-    cur.close()
+    news_list = []
+    if supabase:
+        try:
+            res = supabase.table('news').select('*').order('created_at', desc=True).execute()
+            news_list = res.data or []
+        except Exception as e:
+            print("Dashboard Fetch Error:", e)
+            flash(f"Error fetching news: {e}")
 
     return render_template('dashboard.html', news=news_list, username=session.get('username'))
 
@@ -162,33 +193,56 @@ def add_news():
     media_filename = None
     media_type = 'none'
 
-    # File upload handle karo
     file = request.files.get('media')
     if file and file.filename != '' and allowed_file(file.filename):
         ext = file.filename.rsplit('.', 1)[1].lower()
         unique_name = str(uuid.uuid4()) + '.' + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-        media_filename = unique_name
+        file_bytes = file.read()
 
-        # Image ya video detect karo
+        uploaded_to_supabase = False
+        if supabase:
+            try:
+                # Attempt upload to Supabase Storage bucket 'news-media'
+                content_type = file.content_type or ('image/' + ext if ext in {'png', 'jpg', 'jpeg', 'gif'} else 'video/' + ext)
+                supabase.storage.from_('news-media').upload(
+                    path=unique_name,
+                    file=file_bytes,
+                    file_options={"content-type": content_type}
+                )
+                media_filename = supabase.storage.from_('news-media').get_public_url(unique_name)
+                uploaded_to_supabase = True
+            except Exception as st_err:
+                print("Supabase Storage upload warning (falling back to local):", st_err)
+
+        if not uploaded_to_supabase:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+            with open(file_path, 'wb') as f:
+                f.write(file_bytes)
+            media_filename = unique_name
+
         if ext in {'png', 'jpg', 'jpeg', 'gif'}:
             media_type = 'image'
         elif ext in {'mp4', 'mov', 'avi', 'webm'}:
             media_type = 'video'
 
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
+
+    if not supabase:
+        flash("Database connection missing.")
+        return redirect(url_for('dashboard'))
+
     try:
-        cur = mysql.connection.cursor()
-        cur.execute(
-            """INSERT INTO news (title, content, expires_at, media_filename, media_type)
-               VALUES (%s, %s, DATE_ADD(NOW(), INTERVAL %s HOUR), %s, %s)""",
-            (title, content, hours, media_filename, media_type)
-        )
-        mysql.connection.commit()
-        cur.close()
+        supabase.table('news').insert({
+            'title': title,
+            'content': content,
+            'expires_at': expires_at,
+            'media_filename': media_filename,
+            'media_type': media_type
+        }).execute()
         flash("News added successfully.")
     except Exception as e:
-        print("DB ERROR:", e)
-        flash(f"Error: {e}")
+        print("Add News DB Error:", e)
+        flash(f"Error adding news: {e}")
 
     return redirect(url_for('dashboard'))
 
@@ -200,23 +254,28 @@ def delete_news(news_id):
         flash("Access denied.")
         return redirect(url_for('login'))
 
-    cur = mysql.connection.cursor()
+    if not supabase:
+        flash("Database connection missing.")
+        return redirect(url_for('dashboard'))
 
-    # Pehle file ka naam lo
-    cur.execute("SELECT media_filename FROM news WHERE id = %s", (news_id,))
-    news = cur.fetchone()
+    try:
+        res = supabase.table('news').select('media_filename').eq('id', news_id).execute()
+        if res.data and len(res.data) > 0:
+            media = res.data[0].get('media_filename')
+            if media and not media.startswith('http'):
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], media)
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception:
+                        pass
 
-    # File disk se bhi delete karo
-    if news and news['media_filename']:
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], news['media_filename'])
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        supabase.table('news').delete().eq('id', news_id).execute()
+        flash("News deleted.")
+    except Exception as e:
+        print("Delete News Error:", e)
+        flash(f"Error deleting news: {e}")
 
-    cur.execute("DELETE FROM news WHERE id = %s", (news_id,))
-    mysql.connection.commit()
-    cur.close()
-
-    flash("News deleted.")
     return redirect(url_for('dashboard'))
 
 
@@ -227,25 +286,36 @@ def edit_news(news_id):
         flash("Access denied.")
         return redirect(url_for('login'))
 
-    cur = mysql.connection.cursor()
+    if not supabase:
+        flash("Database connection missing.")
+        return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         content = request.form.get('content', '').strip()
-        cur.execute(
-            "UPDATE news SET title = %s, content = %s WHERE id = %s",
-            (title, content, news_id)
-        )
-        mysql.connection.commit()
-        cur.close()
-        flash("News updated.")
+        try:
+            supabase.table('news').update({
+                'title': title,
+                'content': content
+            }).eq('id', news_id).execute()
+            flash("News updated.")
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            print("Update News Error:", e)
+            flash(f"Error updating news: {e}")
+            return redirect(url_for('dashboard'))
+
+    try:
+        res = supabase.table('news').select('*').eq('id', news_id).execute()
+        news = res.data[0] if (res.data and len(res.data) > 0) else None
+        if not news:
+            flash("News article not found.")
+            return redirect(url_for('dashboard'))
+        return render_template('edit_news.html', news=news)
+    except Exception as e:
+        print("Edit News Fetch Error:", e)
+        flash(f"Error fetching news item: {e}")
         return redirect(url_for('dashboard'))
-
-    cur.execute("SELECT * FROM news WHERE id = %s", (news_id,))
-    news = cur.fetchone()
-    cur.close()
-
-    return render_template('edit_news.html', news=news)
 
 
 # ── CLIENT NEWS ──
@@ -256,14 +326,15 @@ def client_news():
     if session.get('role') != 'client':
         return redirect(url_for('dashboard'))
 
-    cur = mysql.connection.cursor()
-    cur.execute("""
-        SELECT * FROM news
-        WHERE expires_at IS NULL OR expires_at > NOW()
-        ORDER BY created_at DESC
-    """)
-    news_list = cur.fetchall()
-    cur.close()
+    news_list = []
+    if supabase:
+        try:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            res = supabase.table('news').select('*').or_(f"expires_at.is.null,expires_at.gt.{now_iso}").order('created_at', desc=True).execute()
+            news_list = res.data or []
+        except Exception as e:
+            print("Client News Fetch Error:", e)
+            flash(f"Error loading news feed: {e}")
 
     return render_template('news.html', news=news_list, username=session.get('username'))
 

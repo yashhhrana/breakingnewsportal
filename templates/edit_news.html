@@ -31,11 +31,11 @@
       <div class="form-group">
         <label><strong>Current Media:</strong></label><br>
         {% if news['media_type'] == 'image' %}
-          <img src="/static/uploads/{{ news['media_filename'] }}"
+          <img src="{{ news['media_filename'] | media_url }}"
                class="img-fluid rounded" style="max-height:150px;">
         {% elif news['media_type'] == 'video' %}
           <video controls style="max-height:150px; width:100%;" class="rounded">
-            <source src="/static/uploads/{{ news['media_filename'] }}"
+            <source src="{{ news['media_filename'] | media_url }}"
                     type="video/mp4">
           </video>
         {% endif %}

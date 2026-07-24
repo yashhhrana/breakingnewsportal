@@ -92,12 +92,12 @@
         <!-- Media Preview in Dashboard -->
         {% if item['media_filename'] %}
           {% if item['media_type'] == 'image' %}
-            <img src="/static/uploads/{{ item['media_filename'] }}"
+            <img src="{{ item['media_filename'] | media_url }}"
                  class="img-fluid rounded mb-2"
                  style="max-height: 200px;">
           {% elif item['media_type'] == 'video' %}
             <video controls class="mb-2" style="max-height: 200px; width: 100%;">
-              <source src="/static/uploads/{{ item['media_filename'] }}">
+              <source src="{{ item['media_filename'] | media_url }}">
             </video>
           {% endif %}
         {% endif %}

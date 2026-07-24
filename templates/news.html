@@ -1,61 +1,68 @@
 {% extends "app.html" %}
 {% block content %}
-<div class="container mt-4">
-  <h2>📰 Breaking News</h2>
-  <p>Welcome, <strong>{{ username }}</strong></p>
-  <a href="/logout" class="btn btn-dark mb-3">Logout</a>
+
+<div class="container py-4">
+  <!-- Header Banner -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom border-secondary">
+    <div>
+      <h2 class="text-white mb-1"><i class="fa-solid fa-bolt text-danger mr-2"></i>Breaking News Feed</h2>
+      <p class="text-muted mb-0">Live streams and high-priority bulletins from around the world.</p>
+    </div>
+    <div class="mt-3 mt-md-0">
+      <span class="badge badge-dark-pill p-2 px-3">
+        <i class="fa-solid fa-user text-primary mr-1"></i> Hello, <strong>{{ username }}</strong>
+      </span>
+    </div>
+  </div>
 
   {% for item in news %}
-    <div class="card mb-3">
-      <div class="card-body">
-
-        <!-- Title aur Media side by side -->
-        <div class="d-flex align-items-start">
-
-          <!-- Left side — Title aur Content -->
-          <div class="flex-grow-1 mr-3">
-            <h5 class="card-title">{{ item['title'] }}</h5>
-            <p class="card-text">{{ item['content'] }}</p>
+    <div class="glass-card mb-4 p-4">
+      <div class="row align-items-center">
+        <!-- Story Content (Left) -->
+        <div class="col-md-{% if item['media_filename'] %}8{% else %}12{% endif %} mb-3 mb-md-0">
+          <span class="badge badge-live mb-2">
+            <i class="fa-solid fa-circle text-danger mr-1" style="font-size: 8px;"></i> LIVE STORY
+          </span>
+          <h4 class="text-white font-weight-bold mb-2">{{ item['title'] }}</h4>
+          <p class="text-muted lead-sm mb-3" style="line-height: 1.6;">{{ item['content'] }}</p>
+          
+          <div class="d-flex flex-wrap align-items-center text-muted small pt-2 border-top border-secondary">
+            <span class="mr-3 mb-1"><i class="fa-regular fa-clock mr-1"></i> Posted: {{ item['created_at'] }}</span>
+            {% if item['expires_at'] %}
+              <span class="badge-timer mb-1">
+                <i class="fa-solid fa-stopwatch mr-1"></i> Expires in:
+                <strong class="countdown" data-expires="{{ item['expires_at'] }}">Calculating...</strong>
+              </span>
+            {% endif %}
           </div>
+        </div>
 
-          <!-- Right side — Chhoti Image ya Video -->
-          {% if item['media_filename'] %}
-            <div style="min-width: 150px; max-width: 200px;">
+        <!-- Media Attachment (Right) -->
+        {% if item['media_filename'] %}
+          <div class="col-md-4 text-center">
+            <div class="media-container shadow-lg">
               {% if item['media_type'] == 'image' %}
                 <img src="{{ item['media_filename'] | media_url }}"
-                     class="rounded"
-                     style="width: 180px; height: 120px; object-fit: cover;">
-
+                     class="img-fluid rounded w-100"
+                     style="max-height: 220px; object-fit: cover;">
               {% elif item['media_type'] == 'video' %}
-                <video controls
-                       style="width: 180px; height: 120px; object-fit: cover;"
-                       class="rounded">
+                <video controls class="w-100 rounded" style="max-height: 220px; object-fit: cover;">
                   <source src="{{ item['media_filename'] | media_url }}">
                 </video>
               {% endif %}
             </div>
-          {% endif %}
-
-        </div>
-
-        <!-- Time aur Countdown neeche -->
-        <hr class="mt-2 mb-1">
-        <small class="text-muted">🕒 Posted: {{ item['created_at'] }}</small><br>
-        {% if item['expires_at'] %}
-          <small class="text-danger">
-            ⏳ Expires in:
-            <span class="countdown" data-expires="{{ item['expires_at'] }}">
-              Calculating...
-            </span>
-          </small>
+          </div>
         {% endif %}
-
       </div>
     </div>
   {% endfor %}
 
   {% if not news %}
-    <p class="text-muted text-center">NO NEWS AVAILABLE.</p>
+    <div class="glass-card p-5 text-center text-muted my-5">
+      <i class="fa-solid fa-newspaper fa-4x mb-3 text-secondary"></i>
+      <h4>No Active News at the Moment</h4>
+      <p class="small mb-0">Check back shortly for upcoming breaking news bulletins.</p>
+    </div>
   {% endif %}
 
 </div>
@@ -63,16 +70,19 @@
 <script>
   function updateCountdowns() {
     document.querySelectorAll('.countdown').forEach(function(el) {
-      const diff = new Date(el.getAttribute('data-expires')) - new Date();
+      const expiresAttr = el.getAttribute('data-expires');
+      if (!expiresAttr) return;
+
+      const diff = new Date(expiresAttr) - new Date();
       if (diff <= 0) {
         el.innerHTML = '<span class="text-danger">Expired — Refreshing...</span>';
-        setTimeout(() => location.reload(), 2000);
+        setTimeout(() => location.reload(), 2500);
         return;
       }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
-      el.innerHTML = '<strong>' + h + 'h ' + m + 'm ' + s + 's</strong>';
+      el.innerHTML = h + 'h ' + m + 'm ' + s + 's';
     });
   }
   updateCountdowns();

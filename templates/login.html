@@ -1,37 +1,61 @@
 {% extends "app.html" %}
 {% block content %}
-<div class="container mt-4" style="max-width: 500px;">
-  <h2>Login</h2>
 
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="alert alert-danger">
-        {% for message in messages %}{{ message }}{% endfor %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      
+      <div class="glass-card p-4 p-sm-5">
+        <div class="text-center mb-4">
+          <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px; font-size: 1.5rem;">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <h3 class="text-white mb-1">Welcome Back</h3>
+          <p class="text-muted small">Log in to access your news feed</p>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert alert-danger bg-danger text-white border-0 rounded-lg small mb-4">
+              {% for message in messages %}<i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ message }}{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form action="/login" method="POST">
+          {{ form.hidden_tag() }}
+
+          <div class="form-group mb-3">
+            <label class="small text-muted font-weight-bold">EMAIL ADDRESS</label>
+            <div class="input-group">
+              {{ form.email(class="form-control", placeholder="name@example.com") }}
+            </div>
+            {% for error in form.email.errors %}
+              <small class="text-danger mt-1 d-block">{{ error }}</small>
+            {% endfor %}
+          </div>
+
+          <div class="form-group mb-4">
+            <label class="small text-muted font-weight-bold">PASSWORD</label>
+            {{ form.password(class="form-control", placeholder="Enter your password") }}
+            {% for error in form.password.errors %}
+              <small class="text-danger mt-1 d-block">{{ error }}</small>
+            {% endfor %}
+          </div>
+
+          {{ form.submit(class="btn btn-gradient-primary btn-block btn-lg py-3 text-uppercase font-weight-bold", value="Sign In") }}
+          
+          <div class="text-center mt-4">
+            <a href="/register" class="text-muted small">
+              Don't have an account? <span class="text-primary font-weight-bold">Register here</span>
+            </a>
+          </div>
+        </form>
+
       </div>
-    {% endif %}
-  {% endwith %}
 
-  <form action="/login" method="POST">
-    {{ form.hidden_tag() }}
-
-    <div class="form-group">
-      {{ form.email.label }}
-      {{ form.email(class="form-control", placeholder="Enter your email") }}
-      {% for error in form.email.errors %}
-        <small class="text-danger">{{ error }}</small>
-      {% endfor %}
     </div>
-
-    <div class="form-group">
-      {{ form.password.label }}
-      {{ form.password(class="form-control", placeholder="Enter your password") }}
-      {% for error in form.password.errors %}
-        <small class="text-danger">{{ error }}</small>
-      {% endfor %}
-    </div>
-
-    {{ form.submit(class="btn btn-dark btn-block mt-3") }}
-    <a href="/register" class="btn btn-link mt-2">Don't have an account? Register here</a>
-  </form>
+  </div>
 </div>
+
 {% endblock %}

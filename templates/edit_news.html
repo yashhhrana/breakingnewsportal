@@ -1,49 +1,65 @@
 {% extends "app.html" %}
 {% block content %}
-<div class="container mt-4" style="max-width: 600px;">
-  <h2>✏️ Edit News</h2>
 
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="alert alert-info">
-        {% for message in messages %}{{ message }}{% endfor %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      
+      <div class="glass-card p-4 p-sm-5">
+        <div class="d-flex align-items-center mb-4">
+          <a href="/dashboard" class="btn btn-sm btn-dark-pill px-3 mr-3">
+            <i class="fa-solid fa-arrow-left"></i> Back
+          </a>
+          <h3 class="text-white mb-0"><i class="fa-solid fa-pen-to-square text-primary mr-2"></i>Edit Article</h3>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert alert-info bg-primary text-white border-0 rounded-lg small mb-4">
+              {% for message in messages %}<i class="fa-solid fa-info-circle mr-1"></i> {{ message }}{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form action="/edit_news/{{ news['id'] }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group mb-3">
+            <label class="small text-muted font-weight-bold">ARTICLE TITLE</label>
+            <input type="text" name="title" class="form-control" value="{{ news['title'] }}" required>
+          </div>
+
+          <div class="form-group mb-4">
+            <label class="small text-muted font-weight-bold">ARTICLE CONTENT</label>
+            <textarea name="content" class="form-control" rows="6" required>{{ news['content'] }}</textarea>
+          </div>
+
+          <!-- Existing Media Attachment Display -->
+          {% if news['media_filename'] %}
+            <div class="form-group mb-4 p-3 bg-dark rounded border border-secondary">
+              <label class="small text-muted font-weight-bold mb-2">CURRENT ATTACHED MEDIA:</label><br>
+              {% if news['media_type'] == 'image' %}
+                <img src="{{ news['media_filename'] | media_url }}" class="img-fluid rounded" style="max-height: 180px;">
+              {% elif news['media_type'] == 'video' %}
+                <video controls style="max-height: 180px; width: 100%;" class="rounded">
+                  <source src="{{ news['media_filename'] | media_url }}" type="video/mp4">
+                </video>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          <div class="d-flex align-items-center">
+            <button type="submit" class="btn btn-gradient-primary btn-block py-3 font-weight-bold mr-2">
+              <i class="fa-solid fa-check mr-1"></i> Update Article
+            </button>
+            <a href="/dashboard" class="btn btn-dark-pill py-3 px-4">Cancel</a>
+          </div>
+        </form>
+
       </div>
-    {% endif %}
-  {% endwith %}
 
-  <form action="/edit_news/{{ news['id'] }}" method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-    <div class="form-group">
-      <label><strong>News Title</strong></label>
-      <input type="text" name="title" class="form-control"
-             value="{{ news['title'] }}" required>
     </div>
-
-    <div class="form-group">
-      <label><strong>News Content</strong></label>
-      <textarea name="content" class="form-control"
-                rows="5" required>{{ news['content'] }}</textarea>
-    </div>
-
-    <!-- Current media dikhao -->
-    {% if news['media_filename'] %}
-      <div class="form-group">
-        <label><strong>Current Media:</strong></label><br>
-        {% if news['media_type'] == 'image' %}
-          <img src="{{ news['media_filename'] | media_url }}"
-               class="img-fluid rounded" style="max-height:150px;">
-        {% elif news['media_type'] == 'video' %}
-          <video controls style="max-height:150px; width:100%;" class="rounded">
-            <source src="{{ news['media_filename'] | media_url }}"
-                    type="video/mp4">
-          </video>
-        {% endif %}
-      </div>
-    {% endif %}
-
-    <button type="submit" class="btn btn-dark">Update News</button>
-    <a href="/dashboard" class="btn btn-secondary ml-2">Cancel</a>
-  </form>
+  </div>
 </div>
+
 {% endblock %}

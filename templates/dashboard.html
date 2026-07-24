@@ -1,122 +1,148 @@
 {% extends "app.html" %}
 {% block content %}
-<div class="container mt-4">
-  <h2>🛠️ Admin Dashboard</h2>
-  <p>Welcome, <strong>{{ username }}</strong></p>
-  <a href="/logout" class="btn btn-dark mb-3">Logout</a>
+
+<div class="container py-4">
+  <!-- Header Banner -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom border-secondary">
+    <div>
+      <h2 class="text-white mb-1"><i class="fa-solid fa-sliders text-primary mr-2"></i>Admin News Desk</h2>
+      <p class="text-muted mb-0">Manage news broadcasts, media attachments, and expiration rules.</p>
+    </div>
+    <div class="mt-3 mt-md-0">
+      <span class="badge badge-dark-pill p-2 px-3">
+        <i class="fa-solid fa-user-shield text-success mr-1"></i> Connected as <strong>{{ username }}</strong>
+      </span>
+    </div>
+  </div>
 
   {% with messages = get_flashed_messages() %}
     {% if messages %}
-      <div class="alert alert-info">
-        {% for message in messages %}{{ message }}{% endfor %}
+      <div class="alert alert-info bg-primary text-white border-0 rounded-lg small mb-4">
+        {% for message in messages %}<i class="fa-solid fa-info-circle mr-1"></i> {{ message }}{% endfor %}
       </div>
     {% endif %}
   {% endwith %}
 
-  <h4>Add News</h4>
+  <div class="row">
+    <!-- Left Column: Add News Form -->
+    <div class="col-lg-5 mb-4">
+      <div class="glass-card p-4">
+        <h4 class="text-white mb-3"><i class="fa-solid fa-plus-circle text-primary mr-2"></i>Publish New Article</h4>
+        
+        <form action="/add_news" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-  <!-- enctype ZAROORI HAI — iske bina file upload nahi hogi -->
-  <form action="/add_news" method="POST" enctype="multipart/form-data" class="mb-4">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <!-- Title -->
+          <div class="form-group mb-3">
+            <label class="small text-muted font-weight-bold">ARTICLE TITLE</label>
+            <input type="text" name="title" class="form-control" placeholder="Headline / Article Title" required>
+          </div>
 
-    <!-- Title -->
-    <div class="form-group">
-      <label><strong>News Title</strong></label>
-      <input type="text" name="title" class="form-control"
-             placeholder="Write news title..." required>
-    </div>
+          <!-- Content -->
+          <div class="form-group mb-3">
+            <label class="small text-muted font-weight-bold">ARTICLE CONTENT</label>
+            <textarea name="content" class="form-control" rows="4" placeholder="Write news story body..." required></textarea>
+          </div>
 
-    <!-- Content -->
-    <div class="form-group">
-      <label><strong>News Content</strong></label>
-      <textarea name="content" class="form-control" rows="4"
-                placeholder="Write content here..." required></textarea>
-    </div>
+          <!-- Photo / Video Upload -->
+          <div class="form-group mb-3">
+            <label class="small text-muted font-weight-bold">MEDIA ATTACHMENT (IMAGE / VIDEO)</label>
+            <div class="custom-file">
+              <input type="file" 
+                     name="media" 
+                     class="custom-file-input" 
+                     id="mediaFile"
+                     accept="image/png, image/jpg, image/jpeg, image/gif, video/mp4, video/mov, video/avi, video/webm">
+              <label class="custom-file-label" for="mediaFile">Choose image or video file...</label>
+            </div>
+            <small class="text-muted mt-2 d-block">
+              <i class="fa-solid fa-file-video mr-1"></i> Formats: JPG, PNG, GIF, MP4, MOV, WEBM | Max 50MB
+            </small>
+          </div>
 
-    <!-- PHOTO / VIDEO UPLOAD -->
-    <div class="form-group">
-      <label><strong>Photo/Video</strong></label>
-      <div class="custom-file">
-        <input type="file" 
-               name="media" 
-               class="custom-file-input" 
-               id="mediaFile"
-               accept="image/png, image/jpg, image/jpeg, image/gif, video/mp4, video/mov, video/avi">
-        <label class="custom-file-label" for="mediaFile">
-          Choose photo or video...
-        </label>
-      </div>
-      <small class="text-muted mt-1 d-block">
-        ✅ Allowed: JPG, PNG, GIF, MP4, MOV, AVI &nbsp;|&nbsp; 📦 Max size: 50MB
-      </small>
-    </div>
-
-    <!-- File Preview — select karne ke baad dikhega -->
-    <div id="preview-container" class="mb-3" style="display:none;">
-      <label><strong>Preview:</strong></label><br>
-      <img id="image-preview" src="#" alt="Image Preview"
-           style="max-height: 200px; display:none;" class="img-fluid rounded">
-      <video id="video-preview" controls
-             style="max-height: 200px; display:none;" class="w-100 rounded">
-        <source id="video-source" src="#">
-      </video>
-    </div>
-
-    <!-- Expiry -->
-    <div class="form-group">
-      <label><strong> Time to Expire</strong></label>
-      <select name="expires_in" class="form-control">
-        <option value="1">1 HOUR</option>
-        <option value="6">6 HOURS</option>
-        <option value="12">12 HOURS</option>
-        <option value="24" selected>24 HOURS (1 DAY)</option>
-        <option value="48">48 HOURS (2 DAYS)</option>
-        <option value="168">1 WEEK</option>
-      </select>
-    </div>
-
-    <button type="submit" class="btn btn-success btn-block">
-      📢 Add News
-    </button>
-  </form>
-
-  <hr>
-
-  <h4>All News</h4>
-  {% for item in news %}
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5>{{ item['title'] }}</h5>
-        <p>{{ item['content'] }}</p>
-
-        <!-- Media Preview in Dashboard -->
-        {% if item['media_filename'] %}
-          {% if item['media_type'] == 'image' %}
-            <img src="{{ item['media_filename'] | media_url }}"
-                 class="img-fluid rounded mb-2"
-                 style="max-height: 200px;">
-          {% elif item['media_type'] == 'video' %}
-            <video controls class="mb-2" style="max-height: 200px; width: 100%;">
-              <source src="{{ item['media_filename'] | media_url }}">
+          <!-- Live Preview Box -->
+          <div id="preview-container" class="mb-3 p-3 bg-dark rounded border border-secondary" style="display:none;">
+            <label class="small text-muted font-weight-bold mb-2">FILE PREVIEW:</label><br>
+            <img id="image-preview" src="#" alt="Image Preview" style="max-height: 180px; display:none;" class="img-fluid rounded">
+            <video id="video-preview" controls style="max-height: 180px; display:none;" class="w-100 rounded">
+              <source id="video-source" src="#">
             </video>
-          {% endif %}
-        {% endif %}
+          </div>
 
-        <br>
-        <small class="text-muted">📅 Added: {{ item['created_at'] }}</small><br>
-        <small class="text-danger">
-          ⏳ Expires: {{ item['expires_at'] if item['expires_at'] else 'No expiry set' }}
-        </small>
-        <br><br>
-        <a href="/edit_news/{{ item['id'] }}" class="btn btn-sm btn-primary">✏️ Edit</a>
-        <a href="/delete_news/{{ item['id'] }}" class="btn btn-sm btn-danger">🗑️ Delete</a>
+          <!-- Expiry Duration -->
+          <div class="form-group mb-4">
+            <label class="small text-muted font-weight-bold">EXPIRATION DURATION</label>
+            <select name="expires_in" class="form-control">
+              <option value="1">1 Hour</option>
+              <option value="6">6 Hours</option>
+              <option value="12">12 Hours</option>
+              <option value="24" selected>24 Hours (1 Day)</option>
+              <option value="48">48 Hours (2 Days)</option>
+              <option value="168">7 Days (1 Week)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-gradient-primary btn-block py-3 font-weight-bold">
+            <i class="fa-solid fa-paper-plane mr-2"></i> Publish News
+          </button>
+        </form>
       </div>
     </div>
-  {% endfor %}
 
+    <!-- Right Column: Articles Feed -->
+    <div class="col-lg-7">
+      <h4 class="text-white mb-3"><i class="fa-solid fa-newspaper text-indigo mr-2"></i>Active News Feed</h4>
+
+      {% for item in news %}
+        <div class="glass-card mb-3 p-4">
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-3">
+            <h5 class="text-white font-weight-bold mb-2 mb-sm-0">{{ item['title'] }}</h5>
+            <div>
+              <a href="/edit_news/{{ item['id'] }}" class="btn btn-sm btn-dark-pill px-3 mr-1">
+                <i class="fa-solid fa-pen-to-square text-primary"></i> Edit
+              </a>
+              <a href="/delete_news/{{ item['id'] }}" class="btn btn-sm btn-outline-danger px-3" onclick="return confirm('Delete this article?')">
+                <i class="fa-solid fa-trash-can"></i> Delete
+              </a>
+            </div>
+          </div>
+
+          <p class="text-muted small mb-3">{{ item['content'] }}</p>
+
+          <!-- Media Display -->
+          {% if item['media_filename'] %}
+            <div class="media-container mb-3">
+              {% if item['media_type'] == 'image' %}
+                <img src="{{ item['media_filename'] | media_url }}" class="img-fluid rounded" style="max-height: 220px; width: 100%; object-fit: cover;">
+              {% elif item['media_type'] == 'video' %}
+                <video controls class="w-100 rounded" style="max-height: 240px; object-fit: cover;">
+                  <source src="{{ item['media_filename'] | media_url }}">
+                </video>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          <div class="d-flex flex-wrap align-items-center justify-content-between text-muted small pt-2 border-top border-secondary">
+            <span><i class="fa-regular fa-clock mr-1"></i> Posted: {{ item['created_at'] }}</span>
+            <span class="badge-timer mt-1 mt-sm-0">
+              <i class="fa-solid fa-hourglass-half mr-1"></i> Expires: {{ item['expires_at'] if item['expires_at'] else 'No Limit' }}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+
+      {% if not news %}
+        <div class="glass-card p-5 text-center text-muted">
+          <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary"></i>
+          <h5>No Articles Found</h5>
+          <p class="small mb-0">Use the form on the left to add your first breaking news story!</p>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
 </div>
 
-<!-- File select hone par naam aur preview dikhao -->
 <script>
   document.getElementById('mediaFile').addEventListener('change', function() {
     const file = this.files[0];
@@ -127,8 +153,6 @@
     const videoSource = document.getElementById('video-source');
 
     if (!file) return;
-
-    // File ka naam label mein dikhao
     label.textContent = file.name;
 
     const url = URL.createObjectURL(file);
@@ -138,7 +162,6 @@
       imagePreview.src = url;
       imagePreview.style.display = 'block';
       videoPreview.style.display = 'none';
-
     } else if (file.type.startsWith('video/')) {
       videoSource.src = url;
       videoPreview.load();

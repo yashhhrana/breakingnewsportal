@@ -21,16 +21,42 @@ CREATE TABLE IF NOT EXISTS news (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Create initial Admin Account (Password: admin123)
--- bcrypt hash for 'admin123'
+-- 3. Seed Default Accounts
+-- Admin Account (Email: admin@news.com | Password: admin123)
 INSERT INTO users (username, email, password, role)
 VALUES ('admin', 'admin@news.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'admin')
 ON CONFLICT (email) DO NOTHING;
 
--- 4. Enable Row Level Security (RLS) policies or allow public access for PostgREST if required
+-- Client Account (Email: user@news.com | Password: user123)
+INSERT INTO users (username, email, password, role)
+VALUES ('john_doe', 'user@news.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'client')
+ON CONFLICT (email) DO NOTHING;
+
+-- 4. Seed Pre-loaded Breaking News Data using existing uploaded media
+INSERT INTO news (title, content, media_filename, media_type, expires_at)
+VALUES 
+(
+    'Global AI & Tech Innovation Summit 2026 Announced',
+    'Tech leaders around the globe convene to discuss revolutionary developments in artificial intelligence, quantum computing, and sustainable energy solutions for smart cities.',
+    'fd08e713-f848-4539-8955-5d9c35dcbda2.jpg',
+    'image',
+    NOW() + INTERVAL '7 DAYS'
+),
+(
+    'Live Coverage: Next-Gen Lunar Base Module Deployment',
+    'Watch exclusive footage from the international space station as autonomous rover modules deploy solar arrays on the lunar surface.',
+    '096ab847-d0fd-4c2f-b1c1-2d21f3f97d2f.mp4',
+    'video',
+    NOW() + INTERVAL '14 DAYS'
+);
+
+-- 5. Enable Row Level Security (RLS) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE news ENABLE ROW LEVEL SECURITY;
 
--- Simple policies for anon key / service key access if RLS is enabled:
+-- Allow full read/write access for application operations
+DROP POLICY IF EXISTS "Allow public read/write users" ON users;
+DROP POLICY IF EXISTS "Allow public read/write news" ON news;
+
 CREATE POLICY "Allow public read/write users" ON users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write news" ON news FOR ALL USING (true) WITH CHECK (true);

@@ -1,14 +1,50 @@
-
 {% extends "app.html" %}
 {% block content %}
 
-<div class="container text-center mt-5">
-  <h1>📰 Breaking News Portal</h1>
-  <p class="text-muted mt-2">Stay updated with the latest news</p>
-  <hr>
-  <div class="mt-4">
-    <a href="/login" class="btn btn-dark btn-lg mr-3">Login</a>
-    <a href="/register" class="btn btn-outline-dark btn-lg">Register</a>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10 text-center">
+      
+      <div class="glass-card p-5 my-4">
+        <div class="mb-4">
+          <span class="badge badge-live mb-3">
+            <i class="fa-solid fa-bolt mr-1"></i> LIVE NEWS NETWORK
+          </span>
+          <h1 class="display-4 font-weight-bold text-white">Breaking News Portal</h1>
+          <p class="lead text-muted mt-3">
+            Your real-time destination for verified breaking news, instant updates, and high-definition video coverage.
+          </p>
+        </div>
+
+        <hr class="border-secondary my-4">
+
+        <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center mt-4">
+          <a href="/login" class="btn btn-gradient-primary btn-lg px-5 py-3 mb-3 mb-sm-0 mr-sm-3 w-100 w-sm-auto">
+            <i class="fa-solid fa-right-to-bracket mr-2"></i> Account Login
+          </a>
+          <a href="/register" class="btn btn-dark-pill btn-lg px-5 py-3 w-100 w-sm-auto">
+            <i class="fa-solid fa-user-plus mr-2"></i> Register Free
+          </a>
+        </div>
+      </div>
+
+      <!-- Feature Badges -->
+      <div class="row mt-4 text-center">
+        <div class="col-4">
+          <h4 class="text-primary font-weight-bold mb-1">24/7</h4>
+          <small class="text-muted">Live Bulletins</small>
+        </div>
+        <div class="col-4">
+          <h4 class="text-indigo font-weight-bold mb-1">HD</h4>
+          <small class="text-muted">Video & Images</small>
+        </div>
+        <div class="col-4">
+          <h4 class="text-success font-weight-bold mb-1">Fast</h4>
+          <small class="text-muted">Cloud Backend</small>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
